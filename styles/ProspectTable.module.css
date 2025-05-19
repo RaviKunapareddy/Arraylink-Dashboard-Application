@@ -1,0 +1,93 @@
+.tableContainer {
+  width: 100%;
+  overflow-x: auto;
+  margin-top: 1rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+}
+
+.prospectTable {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: white;
+}
+
+.prospectTable th,
+.prospectTable td {
+  padding: 12px 15px;
+  text-align: left;
+  border-bottom: 1px solid #eaeaea;
+}
+
+.prospectTable th {
+  background-color: #f1f1f1;
+  font-weight: bold;
+  color: #333;
+}
+
+.prospectTable tr:hover {
+  background-color: #f9f9f9;
+}
+
+.outreachButton {
+  background-color: #0070f3;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background-color 0.2s;
+}
+
+.outreachButton:hover {
+  background-color: #0051a8;
+}
+
+.outreachButton:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+/* Call status styles */
+.callStatus {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: bold;
+  color: white;
+  text-align: center;
+}
+
+.queued {
+  background-color: #f59e0b;
+}
+
+.ringing {
+  background-color: #10b981;
+  animation: pulse 1.5s infinite;
+}
+
+.in-progress, 
+.answered,
+.in-call {
+  background-color: #3b82f6;
+}
+
+.completed {
+  background-color: #6366f1;
+}
+
+.busy, 
+.failed, 
+.no-answer,
+.canceled {
+  background-color: #ef4444;
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.6; }
+  100% { opacity: 1; }
+} 
