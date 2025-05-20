@@ -1,52 +1,76 @@
+// Next.js API route support: https://nextjs.org/docs/api-routes/introduction
+
+// Import utility modules
+const contextManager = require('../../utils/contextManager');
+const twimlBuilder = require('../../utils/twimlBuilder');
+const logger = require('../../utils/logger');
+
 export default function handler(req, res) {
   try {
-    // Extract the query parameters
+    // Extract parameters from the query string
     const { managerName, hotelName, recommendedProduct, lastProduct } = req.query;
     
-    // Get the base URL from environment or use the request host
-    const baseUrl = process.env.BASE_URL || `https://${req.headers.host}`;
+    // Validate required parameters
+    if (!managerName || !hotelName || !recommendedProduct) {
+      return res.status(400).json({ error: 'Missing required parameters' });
+    }
     
-    // Log the parameters for debugging
-    console.log('Call script parameters:');
-    console.log(`Manager Name: ${managerName}`);
-    console.log(`Hotel Name: ${hotelName}`);
-    console.log(`Recommended Product: ${recommendedProduct}`);
-    console.log(`Last Product: ${lastProduct}`);
-    console.log(`Base URL: ${baseUrl}`);
+    // Get the CallSid from either body (POST) or query (GET) or generate a unique ID
+    // Note: Twilio sends CallSid in body for POST requests, but in query for GET requests
+    // For initial script requests, Twilio uses GET and CallSid might be in a different case
+    const callSid = req.body?.CallSid || req.query?.CallSid || req.query?.callSid || `session_${Date.now()}`;
+    logger.logTwilioInteraction(req, 'CALL_SID_DETECTION', { callSid, method: req.method });
     
-    // Helper function to escape XML special characters
-    const escapeXml = (str) => {
-      if (!str) return '';
-      return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&apos;');
+    // Log the timestamp when TwiML generation starts for latency tracking
+    const twimlStartTime = Date.now();
+    logger.logPerformance('TWIML_GENERATION_START', twimlStartTime);
+    
+    // CRITICAL: Always use environment variable for BASE_URL in production
+    // Never trust req.headers.host as it can be localhost if Azure reverse proxy misroutes
+    let baseUrl = process.env.BASE_URL;
+    
+    // Fallback for development environments
+    if (!baseUrl) {
+      const isDev = process.env.NODE_ENV !== 'production';
+      if (isDev) {
+        // In development, we can use the request host
+        baseUrl = `http://${req.headers.host}`;
+        logger.logTwilioInteraction(req, 'DEV_FALLBACK_URL', { baseUrl });
+      } else {
+        // In production, this is a critical error
+        logger.logError('MISSING_BASE_URL', new Error('BASE_URL environment variable is not set'));
+        return res.status(500).json({ error: 'Server configuration error: BASE_URL not set' });
+      }
+    }
+    
+    // Initialize session with product context
+    const session = contextManager.createNewSession(callSid);
+    session.productContext = {
+      managerName,
+      hotelName,
+      recommendedProduct,
+      lastProduct
     };
+    contextManager.setSession(callSid, session);
     
-    // Escape all dynamic values to prevent XML injection
-    const safeManagerName = escapeXml(managerName);
-    const safeHotelName = escapeXml(hotelName);
-    const safeRecommendedProduct = escapeXml(recommendedProduct);
-    const safeLastProduct = escapeXml(lastProduct);
-    const safeBaseUrl = escapeXml(baseUrl);
+    // Log the incoming call
+    logger.logTwilioInteraction(req, 'INITIAL_CALL', { session });
     
-    // Create a clean TwiML response with no extra whitespace
-    // Ensure the XML declaration is the very first character with no whitespace
-    // Create a compact, single-line TwiML response for maximum compatibility
-    const twiml = '<?xml version="1.0" encoding="UTF-8"?>' +
-      '<Response>' +
-      '<Say voice="alice">Hello, this is ArrayLink AI calling.</Say>' +
-      '<Pause length="1"/>' +
-      '<Say voice="alice">This is a test of our speech recognition system.</Say>' +
-      '<Pause length="1"/>' +
-      '<Say voice="alice">Could you please tell me your name?</Say>' +
-      '<Gather input="speech" timeout="7" speechTimeout="5" speechModel="phone_call" action="' + safeBaseUrl + '/api/call-response" method="POST">' +
-      '<Say voice="alice">Please say your name now.</Say>' +
-      '</Gather>' +
-      '<Say voice="alice">We didn\'t receive your response. Thank you for your time. Goodbye.</Say>' +
-      '</Response>';
+    // Build TwiML response using the builder
+    const twiml = twimlBuilder.buildInitialPrompt(session);
+    
+    // Validate TwiML before sending
+    const validation = twimlBuilder.validateTwiml(twiml);
+    if (!validation.isValid) {
+      logger.logError('INVALID_TWIML', new Error(validation.error), { twiml });
+      // Use safe fallback TwiML instead
+      const safeTwiml = twimlBuilder.buildSafeFallback();
+      
+      res.setHeader('Content-Type', 'text/xml');
+      res.status(200).send(safeTwiml);
+      logger.logPerformance('TWIML_FALLBACK_GENERATION', Date.now() - twimlStartTime);
+      return;
+    }
     
     // Log the exact TwiML being sent for debugging
     console.log('Final TwiML returned:', twiml);
@@ -54,13 +78,13 @@ export default function handler(req, res) {
     // Set the content type to XML - exactly as 'text/xml'
     res.setHeader('Content-Type', 'text/xml');
     res.status(200).send(twiml);
+    logger.logPerformance('TWIML_GENERATION', Date.now() - session.startTime);
     console.log('TwiML script sent successfully');
   } catch (error) {
-    console.error('Error generating TwiML:', error);
+    logger.logError('INITIAL_CALL_ERROR', error);
     
     // Send a simple valid TwiML response in case of error
-    // Using template string with no whitespace before XML declaration
-    const fallbackTwiml = `<?xml version="1.0" encoding="UTF-8"?><Response><Say>We're sorry, there was an error with our system. Please try again later.</Say></Response>`;
+    const fallbackTwiml = twimlBuilder.buildSafeFallback();
     
     res.setHeader('Content-Type', 'text/xml');
     res.status(200).send(fallbackTwiml);

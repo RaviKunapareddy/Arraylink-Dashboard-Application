@@ -1,5 +1,7 @@
-// Import Twilio SDK
-const twilio = require('twilio');
+// Import our enhanced Twilio client with retry logic
+const twilioClient = require('../../utils/twilioClient');
+// Import logger for better debugging
+const logger = require('../../utils/logger');
 
 // Helper function to validate environment variables
 function validateEnvVars() {
@@ -39,34 +41,56 @@ export default async function handler(req, res) {
         });
       }
       
-      // Get Twilio credentials from environment variables
-      const accountSid = process.env.TWILIO_ACCOUNT_SID;
-      const authToken = process.env.TWILIO_AUTH_TOKEN;
+      // Get Twilio phone number from environment variables
       const twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER;
       
-      // Initialize Twilio client
-      const client = twilio(accountSid, authToken);
+      // Get the base URL for our TwiML scripts with proper fallback for development
+      let baseUrl = process.env.BASE_URL;
+      if (!baseUrl) {
+        const isDev = process.env.NODE_ENV !== 'production';
+        if (isDev) {
+          baseUrl = `http://${req.headers.host}`;
+          logger.logTwilioInteraction(req, 'DEV_FALLBACK_URL', { baseUrl });
+        } else {
+          throw new Error('BASE_URL environment variable is not set in production');
+        }
+      }
       
-      // Get the base URL for our TwiML scripts
-      const baseUrl = process.env.BASE_URL || `https://${req.headers.host}`;
-      console.log(`Using base URL: ${baseUrl}`);
+      // Log the request details
+      logger.logTwilioInteraction(req, 'OUTREACH_CALL_REQUEST', {
+        phoneNumber,
+        managerName,
+        hotelName,
+        recommendedProduct,
+        lastProduct,
+        baseUrl
+      });
       
       // Construct the TwiML URL
       const twimlUrl = `${baseUrl}/api/call-script?hotelName=${encodeURIComponent(hotelName)}&managerName=${encodeURIComponent(managerName)}&recommendedProduct=${encodeURIComponent(recommendedProduct)}&lastProduct=${encodeURIComponent(lastProduct || 'your previous order')}`;
-      console.log(`TwiML URL: ${twimlUrl}`);
       
-      // Make an actual call with Twilio using our custom script
-      const call = await client.calls.create({
+      // Prepare call parameters
+      const callParams = {
         url: twimlUrl,
         to: phoneNumber,
         from: twilioPhoneNumber,
-        statusCallback: `${baseUrl}/api/call-status`, // Optional: create this endpoint to track call status
+        statusCallback: `${baseUrl}/api/call-status`,
         statusCallbackEvent: ['initiated', 'ringing', 'answered', 'completed'],
         statusCallbackMethod: 'POST'
-      });
+      };
       
-      console.log(`Call initiated to ${managerName} at ${hotelName} about ${recommendedProduct}`);
-      console.log(`Call SID: ${call.sid}`);
+      // Make an actual call with Twilio using our custom script with retry logic
+      const callStartTime = Date.now();
+      const call = await twilioClient.createCall(callParams);
+      
+      // Log success with performance metrics
+      const callDuration = Date.now() - callStartTime;
+      logger.logPerformance('OUTREACH_CALL_SUCCESS', callDuration, {
+        callSid: call.sid,
+        managerName,
+        hotelName,
+        recommendedProduct
+      });
       
       // Return success response with call SID
       res.status(200).json({ 
@@ -75,7 +99,15 @@ export default async function handler(req, res) {
         callSid: call.sid
       });
     } catch (error) {
-      console.error('Error initiating call:', error);
+      // Enhanced error logging
+      logger.logError('OUTREACH_CALL_FAILURE', error, {
+        phoneNumber,
+        managerName,
+        hotelName,
+        recommendedProduct,
+        prospectId
+      });
+      
       res.status(500).json({ 
         success: false, 
         message: 'Failed to initiate call',
