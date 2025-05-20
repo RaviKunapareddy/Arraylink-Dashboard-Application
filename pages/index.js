@@ -1,9 +1,33 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import styles from '../styles/Home.module.css';
 import ProspectTable from '../components/ProspectTable';
+import PhoneNumberInput from '../components/PhoneNumberInput';
 
 export default function Home() {
+  const [userPhoneNumber, setUserPhoneNumber] = useState(null);
+  const [isPhoneSubmitted, setIsPhoneSubmitted] = useState(false);
+  
+  // Check if phone number is stored in localStorage on component mount
+  useEffect(() => {
+    const storedPhone = localStorage.getItem('userPhoneNumber');
+    if (storedPhone) {
+      setUserPhoneNumber(storedPhone);
+      setIsPhoneSubmitted(true);
+    }
+  }, []);
+  
+  const handlePhoneSubmit = (phoneNumber) => {
+    if (phoneNumber) {
+      setUserPhoneNumber(phoneNumber);
+      setIsPhoneSubmitted(true);
+      localStorage.setItem('userPhoneNumber', phoneNumber);
+    } else {
+      setUserPhoneNumber(null);
+      setIsPhoneSubmitted(false);
+      localStorage.removeItem('userPhoneNumber');
+    }
+  };
   const [prospects, setProspects] = useState([
     {
       id: 1,
@@ -99,15 +123,14 @@ export default function Home() {
 
   const handleOutreach = (id) => {
     console.log(`Initiating outreach for prospect ID: ${id}`);
-    // We no longer need the alert here as we're using the popup component
     
-    // In a real application, we would make an API call to initiate the outreach
-    // For example:
-    // fetch('/api/outreach', {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify({ prospectId: id })
-    // });
+    // We need a phone number to proceed with outreach
+    if (!userPhoneNumber) {
+      alert('Please enter your phone number first to enable the outreach feature.');
+      return false;
+    }
+    
+    return true;
   };
 
   return (
@@ -126,8 +149,19 @@ export default function Home() {
         <p className={styles.description}>
           Manage your sales prospects and automate outreach
         </p>
-
-        <ProspectTable prospects={prospects} onOutreach={handleOutreach} />
+        
+        <PhoneNumberInput 
+          onPhoneSubmit={handlePhoneSubmit} 
+          isPhoneSubmitted={isPhoneSubmitted} 
+        />
+        
+        {isPhoneSubmitted && (
+          <ProspectTable 
+            prospects={prospects} 
+            onOutreach={handleOutreach} 
+            userPhoneNumber={userPhoneNumber} 
+          />
+        )}
       </main>
 
       <footer className={styles.footer}>

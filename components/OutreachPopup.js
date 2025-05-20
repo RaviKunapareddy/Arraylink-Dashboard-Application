@@ -5,9 +5,26 @@ const OutreachPopup = ({ isOpen, prospectId, hotelName, managerName, lastProduct
   const [stage, setStage] = useState(0);
   const [visible, setVisible] = useState(false);
   
+  // State to track API call status
+  const [callStatus, setCallStatus] = useState({
+    initiated: false,
+    success: false,
+    error: null,
+    callSid: null
+  });
+
   // Function to initiate the actual call via API
   const initiateCall = async () => {
     try {
+      setCallStatus({
+        initiated: true,
+        success: false,
+        error: null,
+        callSid: null
+      });
+      
+      console.log(`Initiating call to ${phoneNumber}`);
+      
       const response = await fetch('/api/outreach', {
         method: 'POST',
         headers: {
@@ -24,10 +41,32 @@ const OutreachPopup = ({ isOpen, prospectId, hotelName, managerName, lastProduct
       });
       
       const data = await response.json();
-      console.log('Call initiated:', data);
-      // We could handle the response here if needed
+      
+      if (data.success) {
+        console.log('Call successfully initiated:', data);
+        setCallStatus({
+          initiated: true,
+          success: true,
+          error: null,
+          callSid: data.callSid
+        });
+      } else {
+        console.error('Call initiation failed:', data.message);
+        setCallStatus({
+          initiated: true,
+          success: false,
+          error: data.message || 'Failed to initiate call',
+          callSid: null
+        });
+      }
     } catch (error) {
       console.error('Error initiating call:', error);
+      setCallStatus({
+        initiated: true,
+        success: false,
+        error: error.message || 'An unexpected error occurred',
+        callSid: null
+      });
     }
   };
 
@@ -117,10 +156,24 @@ const OutreachPopup = ({ isOpen, prospectId, hotelName, managerName, lastProduct
               <p>Calling {managerName} now...</p>
               <div className={styles.callScript}>
                 <p>AI will discuss: <strong>{recommendedProduct}</strong></p>
+                <p className={styles.phoneNumberInfo}>Call will be placed to: <strong>{phoneNumber}</strong></p>
               </div>
-              <div className={styles.liveIndicator}>
-                <span className={styles.dot}></span> LIVE
-              </div>
+              
+              {callStatus.error ? (
+                <div className={styles.callError}>
+                  <p>Error: {callStatus.error}</p>
+                  <p>Please check your Twilio configuration and try again.</p>
+                </div>
+              ) : callStatus.success ? (
+                <div className={styles.callSuccess}>
+                  <p>Call successfully initiated!</p>
+                  <p>Call ID: {callStatus.callSid}</p>
+                </div>
+              ) : (
+                <div className={styles.liveIndicator}>
+                  <span className={styles.dot}></span> LIVE
+                </div>
+              )}
             </div>
           )}
         </div>

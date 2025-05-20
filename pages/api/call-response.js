@@ -2,6 +2,12 @@ export default function handler(req, res) {
   // Get the digit pressed by the user
   const { Digits } = req.body;
   
+  // Get the base URL from environment or use the request host
+  const baseUrl = process.env.BASE_URL || `https://${req.headers.host}`;
+  
+  // Log the received input for debugging
+  console.log(`Call response received with digit: ${Digits}`);
+  
   // Create a TwiML response based on the user's input
   let twiml = '<?xml version="1.0" encoding="UTF-8"?>\n<Response>\n';
   
@@ -14,6 +20,7 @@ export default function handler(req, res) {
       <Pause length="1"/>
       <Say voice="alice">Thank you for your time. Have a great day!</Say>
     `;
+    console.log('Customer expressed interest in the product');
   } else if (Digits === '2') {
     // User pressed 2 (no)
     twiml += `
@@ -21,14 +28,16 @@ export default function handler(req, res) {
       <Pause length="1"/>
       <Say voice="alice">If you change your mind, feel free to reach out to us. Have a great day!</Say>
     `;
+    console.log('Customer declined interest in the product');
   } else {
     // User pressed something else
     twiml += `
       <Say voice="alice">Sorry, I didn't understand your response.</Say>
-      <Gather numDigits="1" action="/api/call-response" method="POST">
+      <Gather numDigits="1" action="${baseUrl}/api/call-response" method="POST">
         <Say voice="alice">Press 1 if you're interested in our product, or 2 if you're not interested.</Say>
       </Gather>
     `;
+    console.log(`Unrecognized response: ${Digits}, prompting again`);
   }
   
   twiml += '\n</Response>';

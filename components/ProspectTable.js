@@ -2,7 +2,7 @@ import { useState } from 'react';
 import styles from '../styles/ProspectTable.module.css';
 import OutreachPopup from './OutreachPopup';
 
-const ProspectTable = ({ prospects, onOutreach }) => {
+const ProspectTable = ({ prospects, onOutreach, userPhoneNumber }) => {
   const [popupState, setPopupState] = useState({
     isOpen: false,
     prospectId: null,
@@ -14,6 +14,10 @@ const ProspectTable = ({ prospects, onOutreach }) => {
   });
 
   const handleOutreachClick = (prospect) => {
+    // First check if we can proceed with outreach
+    const canProceed = onOutreach(prospect.id);
+    if (!canProceed) return;
+    
     // Open the popup with all relevant data
     setPopupState({
       isOpen: true,
@@ -22,11 +26,8 @@ const ProspectTable = ({ prospects, onOutreach }) => {
       managerName: prospect.managerName,
       lastProduct: prospect.lastPurchasedProduct,
       recommendedProduct: prospect.recommendedProduct,
-      phoneNumber: prospect.phoneNumber || '+15551234567' // Default phone if not available
+      phoneNumber: userPhoneNumber // Use the user's phone number
     });
-    
-    // Call the parent handler
-    onOutreach(prospect.id);
   };
 
   const closePopup = () => {
