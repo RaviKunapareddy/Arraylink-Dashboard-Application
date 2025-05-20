@@ -49,7 +49,7 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
    - Navigate to App Services → Create
    - Fill out the form:
      - Name: arraylink-dashboard
-     - Runtime stack: Node 18 LTS
+     - Runtime stack: Node 20 LTS
      - Operating System: Linux
      - Region: Choose the closest to you
      - Pricing Plan: Free (F1) for testing, or Basic B1 for production
