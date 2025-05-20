@@ -26,6 +26,6 @@ jobs:
     - name: Deploy to Azure
       uses: azure/webapps-deploy@v2
       with:
-        app-name: 'arraylink-dashboard-app'  # Update this to match your exact Azure App Service name
+        app-name: 'array-link-caller'  # Update this to match your exact Azure App Service name
         publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
         package: .
