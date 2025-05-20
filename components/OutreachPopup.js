@@ -1,25 +1,36 @@
 import { useState, useEffect } from 'react';
 import styles from '../styles/OutreachPopup.module.css';
 
-const OutreachPopup = ({ isOpen, hotelName, managerName, lastProduct, recommendedProduct, phoneNumber, onClose }) => {
+const OutreachPopup = ({ isOpen, prospectId, hotelName, managerName, lastProduct, recommendedProduct, phoneNumber, onClose }) => {
   const [stage, setStage] = useState(0);
   const [visible, setVisible] = useState(false);
-  const [aiScript, setAiScript] = useState('');
   
-  // Generate AI script when the popup opens
-  useEffect(() => {
-    if (isOpen && stage === 0) {
-      // Generate a sample script (this would come from the API in a real app)
-      const sampleScript = `Hello ${managerName}, this is ArrayLink AI calling.
+  // Function to initiate the actual call via API
+  const initiateCall = async () => {
+    try {
+      const response = await fetch('/api/outreach', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prospectId,
+          phoneNumber,
+          managerName,
+          hotelName,
+          recommendedProduct,
+          lastProduct
+        }),
+      });
       
-We noticed you last ordered ${lastProduct} and think you'd love our ${recommendedProduct}.
-
-Would you like to add this to your next order? We can offer a special discount.`;
-      
-      setAiScript(sampleScript);
+      const data = await response.json();
+      console.log('Call initiated:', data);
+      // We could handle the response here if needed
+    } catch (error) {
+      console.error('Error initiating call:', error);
     }
-  }, [isOpen, stage, managerName, lastProduct, recommendedProduct]);
-  
+  };
+
   useEffect(() => {
     if (isOpen) {
       setVisible(true);
@@ -28,7 +39,10 @@ Would you like to add this to your next order? We can offer a special discount.`
       // Sequence through the stages
       const timer1 = setTimeout(() => setStage(1), 2000); // Email sent
       const timer2 = setTimeout(() => setStage(2), 4000); // Email opened
-      const timer3 = setTimeout(() => setStage(3), 6000); // Calling customer
+      const timer3 = setTimeout(() => {
+        setStage(3); // Calling customer
+        initiateCall(); // Actually make the API call here
+      }, 6000);
       const timer4 = setTimeout(() => onClose(), 10000); // Close popup (extended time to allow reading)
       
       return () => {
@@ -40,7 +54,7 @@ Would you like to add this to your next order? We can offer a special discount.`
     } else {
       setVisible(false);
     }
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, prospectId, phoneNumber, managerName, hotelName, recommendedProduct]);
   
   if (!visible) return null;
   
@@ -55,7 +69,7 @@ Would you like to add this to your next order? We can offer a special discount.`
             <div className={`${styles.messageBox} ${styles.slideIn}`}>
               <div className={styles.emailPreview}>
                 <div className={styles.emailHeader}>
-                  <div>To: {managerName} ({phoneNumber})</div>
+                  <div>To: {managerName}</div>
                   <div>Subject: Special Product Recommendation for {hotelName}</div>
                 </div>
                 <div className={styles.emailBody}>
@@ -80,7 +94,6 @@ Would you like to add this to your next order? We can offer a special discount.`
               <div className={styles.emailSummary}>
                 <p>Recommended: <strong>{recommendedProduct}</strong></p>
                 <p>Based on previous purchase: <strong>{lastProduct}</strong></p>
-                <p>Contact: <strong>{phoneNumber}</strong></p>
               </div>
             </div>
           )}
@@ -94,12 +107,6 @@ Would you like to add this to your next order? We can offer a special discount.`
                 <span className={styles.statLabel}>Open time:</span> 
                 <span className={styles.statValue}>Just now</span>
               </div>
-              <div className={styles.callPrep}>
-                <p>Preparing to call <strong>{phoneNumber}</strong>...</p>
-                <div className={styles.progressBar}>
-                  <div className={styles.progressBarFill}></div>
-                </div>
-              </div>
             </div>
           )}
           
@@ -107,10 +114,9 @@ Would you like to add this to your next order? We can offer a special discount.`
           {stage === 3 && (
             <div className={`${styles.messageBox} ${styles.slideIn}`}>
               <span className={styles.icon}>📞</span>
-              <p>Calling {managerName} at {phoneNumber}</p>
+              <p>Calling {managerName} now...</p>
               <div className={styles.callScript}>
-                <p className={styles.scriptTitle}>AI Voice Assistant Script:</p>
-                <pre className={styles.scriptText}>{aiScript}</pre>
+                <p>AI will discuss: <strong>{recommendedProduct}</strong></p>
               </div>
               <div className={styles.liveIndicator}>
                 <span className={styles.dot}></span> LIVE

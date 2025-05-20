@@ -25,40 +25,7 @@
   text-align: center;
   line-height: 1.5;
   font-size: 1.25rem;
-  margin-bottom: 1rem;
-}
-
-.phoneInfo {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  background-color: #e8f5ff;
-  border: 1px solid #b3d8ff;
-  border-radius: 8px;
-  padding: 1rem;
   margin-bottom: 2rem;
-  width: 100%;
-  max-width: 600px;
-}
-
-.phoneInfo p {
-  margin: 0 0 0.5rem 0;
-  color: #0050a0;
-}
-
-.changeButton {
-  background-color: #0070f3;
-  color: white;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.changeButton:hover {
-  background-color: #0051a8;
 }
 
 .footer {

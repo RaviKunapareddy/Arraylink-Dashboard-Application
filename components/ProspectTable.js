@@ -2,25 +2,27 @@ import { useState } from 'react';
 import styles from '../styles/ProspectTable.module.css';
 import OutreachPopup from './OutreachPopup';
 
-const ProspectTable = ({ prospects, onOutreach, callStatus, testPhoneNumber }) => {
+const ProspectTable = ({ prospects, onOutreach }) => {
   const [popupState, setPopupState] = useState({
     isOpen: false,
+    prospectId: null,
     hotelName: '',
     managerName: '',
     lastProduct: '',
     recommendedProduct: '',
-    phoneNumber: ''
+    phoneNumber: '' // Added for calling functionality
   });
 
   const handleOutreachClick = (prospect) => {
-    // Open the popup with all relevant data, but use test phone number
+    // Open the popup with all relevant data
     setPopupState({
       isOpen: true,
+      prospectId: prospect.id,
       hotelName: prospect.hotelName,
       managerName: prospect.managerName,
       lastProduct: prospect.lastPurchasedProduct,
       recommendedProduct: prospect.recommendedProduct,
-      phoneNumber: testPhoneNumber // Use the test phone number
+      phoneNumber: prospect.phoneNumber || '+15551234567' // Default phone if not available
     });
     
     // Call the parent handler
@@ -30,34 +32,13 @@ const ProspectTable = ({ prospects, onOutreach, callStatus, testPhoneNumber }) =
   const closePopup = () => {
     setPopupState({
       isOpen: false,
+      prospectId: null,
       hotelName: '',
       managerName: '',
       lastProduct: '',
       recommendedProduct: '',
       phoneNumber: ''
     });
-  };
-
-  // Helper to get call status label
-  const getStatusLabel = (status) => {
-    switch(status) {
-      case 'queued':
-        return 'Queued';
-      case 'ringing':
-        return 'Ringing';
-      case 'in-progress':
-        return 'In Call';
-      case 'completed':
-        return 'Completed';
-      case 'busy':
-        return 'Busy';
-      case 'failed':
-        return 'Failed';
-      case 'no-answer':
-        return 'No Answer';
-      default:
-        return status ? status.charAt(0).toUpperCase() + status.slice(1) : '';
-    }
   };
 
   return (
@@ -71,45 +52,34 @@ const ProspectTable = ({ prospects, onOutreach, callStatus, testPhoneNumber }) =
               <th>Last Purchased Product</th>
               <th>Recommended Product</th>
               <th>Last Purchased Date</th>
-              <th>Call Status</th>
               <th>Action</th>
             </tr>
           </thead>
           <tbody>
-            {prospects.map((prospect) => {
-              const status = callStatus[prospect.id];
-              return (
-                <tr key={prospect.id}>
-                  <td>{prospect.hotelName}</td>
-                  <td>{prospect.managerName}</td>
-                  <td>{prospect.lastPurchasedProduct}</td>
-                  <td>{prospect.recommendedProduct}</td>
-                  <td>{prospect.lastPurchasedDate}</td>
-                  <td>
-                    {status ? (
-                      <span className={`${styles.callStatus} ${styles[status.status]}`}>
-                        {getStatusLabel(status.status)}
-                      </span>
-                    ) : null}
-                  </td>
-                  <td>
-                    <button 
-                      className={styles.outreachButton} 
-                      onClick={() => handleOutreachClick(prospect)}
-                      disabled={!testPhoneNumber || (status && ['queued', 'ringing', 'in-progress'].includes(status.status))}
-                    >
-                      Outreach
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
+            {prospects.map((prospect) => (
+              <tr key={prospect.id}>
+                <td>{prospect.hotelName}</td>
+                <td>{prospect.managerName}</td>
+                <td>{prospect.lastPurchasedProduct}</td>
+                <td>{prospect.recommendedProduct}</td>
+                <td>{prospect.lastPurchasedDate}</td>
+                <td>
+                  <button 
+                    className={styles.outreachButton} 
+                    onClick={() => handleOutreachClick(prospect)}
+                  >
+                    Outreach
+                  </button>
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
       
       <OutreachPopup 
-        isOpen={popupState.isOpen} 
+        isOpen={popupState.isOpen}
+        prospectId={popupState.prospectId}
         hotelName={popupState.hotelName}
         managerName={popupState.managerName}
         lastProduct={popupState.lastProduct}
