@@ -17,12 +17,22 @@ export default function handler(req, res) {
     const baseUrl = process.env.BASE_URL || `https://${req.headers.host}`;
     
     // Log the received input for debugging with detailed information
+    console.log('--- Twilio POST Payload ---');
+    console.log(JSON.stringify(req.body, null, 2));
     console.log('Call response received:');
     console.log('DTMF Input:', Digits);
     console.log('Speech Result:', SpeechResult);
     console.log('Speech Confidence:', Confidence);
-    console.log('Full request body:', JSON.stringify(req.body, null, 2));
     console.log(`Using base URL: ${baseUrl}`);
+    
+    // Log whether this is a speech or DTMF response
+    if (SpeechResult) {
+      console.log('✅ SPEECH RECOGNITION SUCCESSFUL!');
+    } else if (Digits) {
+      console.log('✅ DTMF INPUT RECEIVED!');
+    } else {
+      console.log('⚠️ NO INPUT DETECTED!');
+    }
     
     // Helper function to escape XML special characters
     const escapeXml = (str) => {
@@ -38,65 +48,40 @@ export default function handler(req, res) {
     // Create a TwiML response based on the user's input
     let twiml = '';
     
-    // Process both DTMF and speech input with improved recognition
+    // Process the speech input (caller's name)
     // Ensure the XML declaration is the very first character with no whitespace
     
-    // Normalize speech input for more flexible matching
-    const speechLower = possibleSpeechInput.toLowerCase();
-    console.log('Normalized speech input:', speechLower);
-    
-    // More aggressive matching for yes/no responses
-    const isYes = speechLower.includes('yes') || 
-                 speechLower.includes('yeah') || 
-                 speechLower.includes('sure') || 
-                 speechLower.includes('one') || 
-                 speechLower.includes('1') || 
-                 speechLower.includes('yep') || 
-                 speechLower.includes('correct') || 
-                 speechLower.includes('right');
-                 
-    const isNo = speechLower.includes('no') || 
-               speechLower.includes('nope') || 
-               speechLower.includes('not') || 
-               speechLower.includes('two') || 
-               speechLower.includes('2') || 
-               speechLower.includes('nah') || 
-               speechLower.includes('negative');
-    
-    if (Digits === '1' || isYes) {
-      // User pressed 1 or said "yes"
+    if (SpeechResult) {
+      // The caller said their name, repeat it back
+      const callerName = escapeXml(SpeechResult.trim());
+      
       twiml = `<?xml version="1.0" encoding="UTF-8"?><Response>
-        <Say voice="alice">Great! We're excited that you're interested in our product.</Say>
+        <Say voice="alice">Thank you! You said your name is ${callerName}.</Say>
         <Pause length="1"/>
-        <Say voice="alice">One of our sales representatives will contact you shortly with more information and special pricing.</Say>
+        <Say voice="alice">Our speech recognition system is working correctly.</Say>
         <Pause length="1"/>
-        <Say voice="alice">Thank you for your time. Have a great day!</Say>
+        <Say voice="alice">Thank you for helping us test our system. Have a great day!</Say>
       </Response>`.replace(/\n\s*/g, '');
-      console.log('Customer expressed interest in the product');
-    } else if (Digits === '2' || isNo) {
-      // User pressed 2 or said "no"
-      twiml = `<?xml version="1.0" encoding="UTF-8"?><Response>
-        <Say voice="alice">We understand. Thank you for your time.</Say>
-        <Pause length="1"/>
-        <Say voice="alice">If you change your mind, feel free to reach out to us. Have a great day!</Say>
-      </Response>`.replace(/\n\s*/g, '');
-      console.log('Customer declined interest in the product');
+      
+      console.log(`Successfully recognized caller's name: ${callerName}`);
     } else {
-      // User pressed something else, said something else, or no input
+      // No speech input was detected
       const safeBaseUrl = escapeXml(baseUrl);
+      
       twiml = `<?xml version="1.0" encoding="UTF-8"?><Response>
-        <Say voice="alice">Sorry, I didn't understand your response.</Say>
-        <Gather input="dtmf speech" 
+        <Say voice="alice">I'm sorry, I didn't catch your name.</Say>
+        <Pause length="1"/>
+        <Gather input="speech" 
           timeout="7" 
-          speechTimeout="auto" 
+          speechTimeout="5" 
           speechModel="phone_call" 
-          hints="yes,no,yeah,nope,one,two,1,2,yep,correct,right" 
           action="${safeBaseUrl}/api/call-response" 
           method="POST">
-          <Say voice="alice">Please press 1 or clearly say yes if you're interested. Press 2 or say no if you're not interested.</Say>
+          <Say voice="alice">Could you please tell me your name again?</Say>
         </Gather>
       </Response>`.replace(/\n\s*/g, '');
-      console.log(`Unrecognized response: DTMF=${Digits}, Speech=${SpeechResult}, prompting again`);
+      
+      console.log('No speech input detected, prompting again');
     }
     
     // Set the content type to XML - exactly as 'text/xml'

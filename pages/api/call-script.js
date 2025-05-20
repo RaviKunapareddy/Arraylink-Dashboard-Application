@@ -37,18 +37,19 @@ export default function handler(req, res) {
     // Create a compact, single-line TwiML response for maximum compatibility
     const twiml = '<?xml version="1.0" encoding="UTF-8"?>' +
       '<Response>' +
-      '<Say voice="alice">Hello ' + safeManagerName + ', this is ArrayLink AI calling from our sales department.</Say>' +
+      '<Say voice="alice">Hello, this is ArrayLink AI calling.</Say>' +
       '<Pause length="1"/>' +
-      '<Say voice="alice">We noticed that ' + safeHotelName + ' recently purchased ' + safeLastProduct + '.</Say>' +
+      '<Say voice="alice">This is a test of our speech recognition system.</Say>' +
       '<Pause length="1"/>' +
-      '<Say voice="alice">Based on your purchase history, we\'d like to recommend our ' + safeRecommendedProduct + '.</Say>' +
-      '<Pause length="1"/>' +
-      '<Say voice="alice">Would you like to hear more about this product?</Say>' +
-      '<Gather input="dtmf speech" timeout="7" speechTimeout="auto" speechModel="phone_call" hints="yes,no,one,two,1,2" action="' + safeBaseUrl + '/api/call-response" method="POST">' +
-      '<Say voice="alice">Please press 1 or clearly say yes if you\'re interested. Press 2 or say no if you\'re not interested.</Say>' +
+      '<Say voice="alice">Could you please tell me your name?</Say>' +
+      '<Gather input="speech" timeout="7" speechTimeout="5" speechModel="phone_call" action="' + safeBaseUrl + '/api/call-response" method="POST">' +
+      '<Say voice="alice">Please say your name now.</Say>' +
       '</Gather>' +
       '<Say voice="alice">We didn\'t receive your response. Thank you for your time. Goodbye.</Say>' +
       '</Response>';
+    
+    // Log the exact TwiML being sent for debugging
+    console.log('Final TwiML returned:', twiml);
     
     // Set the content type to XML - exactly as 'text/xml'
     res.setHeader('Content-Type', 'text/xml');
